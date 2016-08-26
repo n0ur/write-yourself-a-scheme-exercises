@@ -1,3 +1,6 @@
+{-
+*Main> parse parseString  "lisp" "\"this \\\"is\\\" a string\""
+-}
 escapedChars :: Parser Char
 escapedChars = do
   char '\\'
