@@ -35,14 +35,23 @@ parseExpr = try parseComplex -- readExpr "3+4i"
   <|> try parseFloat -- readExpr "3.4"
   <|> try parseNumber -- readExpr "3"
   <|> try parseChar -- readExpr "#\\A"
-  <|> parseString -- readExpr "\"hello hows it going?\"" | readExpr "\"hello how\\\"s it going?\""
-  <|> parseAtom -- readExpr "test"
+  <|> try parseString -- readExpr "\"hello hows it going?\"" | readExpr "\"hello how\\\"s it going?\""
+  <|> try parseAtom -- readExpr "test"
+  <|> do 
+    char '('
+    x <- (try parseList <|> parseDottedList)
+    char ')'
+    return x
 
-symbol :: Parser Char
-symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
+-- a list is: (3.2 4 5/4 3+4i) => List [Float 3.2,Number 4,Rational (5 % 4),Complex (3.0 :+ 4.0)]
+parseList :: Parser LispVal
+parseList = liftM List $ sepBy parseExpr spaces 
 
-spaces :: Parser ()
-spaces = skipMany1 space
+parseDottedList :: Parser LispVal
+parseDottedList = do
+  head <- endBy parseExpr spaces
+  tail  <- char '.' >> spaces >> parseExpr
+  return $ DottedList head tail
 
 parseString :: Parser LispVal
 parseString = do
@@ -109,6 +118,12 @@ parseComplex = do
   y <- (try parseFloat <|> parseDecimal)
   char 'i'
   return $ Complex (toDouble x :+ toDouble y)
+
+symbol :: Parser Char
+symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
+
+spaces :: Parser ()
+spaces = skipMany1 space
 
 escapedChars :: Parser Char
 escapedChars = do
