@@ -6,6 +6,7 @@ import Text.ParserCombinators.Parsec hiding (spaces)
 import Numeric
 import Data.Ratio
 import Data.Complex
+import Data.Array
 
 data LispVal = Atom String
   | List [LispVal]
@@ -17,6 +18,7 @@ data LispVal = Atom String
   | Float Float
   | Rational Rational
   | Complex (Complex Double)
+  | Vector (Array Int LispVal)
   deriving (Show)
 
 main :: IO ()
@@ -37,7 +39,12 @@ parseExpr = try parseComplex -- readExpr "3+4i"
   <|> try parseChar -- readExpr "#\\A"
   <|> try parseString -- readExpr "\"hello hows it going?\"" | readExpr "\"hello how\\\"s it going?\""
   <|> try parseAtom -- readExpr "test"
-  <|> do 
+  <|> try (do
+      string "#("
+      x <- parseVector
+      char ')'
+      return x)
+  <|> do -- readExpr "#(1 2 3)"
     char '('
     x <- (try parseList <|> parseDottedList)
     char ')'
@@ -133,9 +140,13 @@ parseUnquote = do
   x <- parseExpr
   return $ List [Atom ",", x]
 
+parseVector :: Parser LispVal
+parseVector = do
+  arrayValues <- sepBy parseExpr spaces
+  return $ Vector (listArray (0, (length arrayValues - 1)) arrayValues)
 
 symbol :: Parser Char
-symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
+symbol = oneOf "!$%&|*+-/:<=>?@^_~"
 
 spaces :: Parser ()
 spaces = skipMany1 space
