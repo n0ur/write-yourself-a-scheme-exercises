@@ -42,6 +42,8 @@ parseExpr = try parseComplex -- readExpr "3+4i"
     x <- (try parseList <|> parseDottedList)
     char ')'
     return x
+  <|> parseQuasiQuote -- readExpr "`(1 2)"
+  <|> parseUnquote -- readExpr ",(1 2)"
 
 -- a list is: (3.2 4 5/4 3+4i) => List [Float 3.2,Number 4,Rational (5 % 4),Complex (3.0 :+ 4.0)]
 parseList :: Parser LispVal
@@ -118,6 +120,19 @@ parseComplex = do
   y <- (try parseFloat <|> parseDecimal)
   char 'i'
   return $ Complex (toDouble x :+ toDouble y)
+
+parseQuasiQuote :: Parser LispVal
+parseQuasiQuote = do
+  char '`'
+  x <- parseExpr
+  return $ List [Atom "`", x]
+
+parseUnquote :: Parser LispVal
+parseUnquote = do
+  char ','
+  x <- parseExpr
+  return $ List [Atom ",", x]
+
 
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
