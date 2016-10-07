@@ -23,14 +23,19 @@ data LispVal = Atom String
 instance Show LispVal where show = showVal
 
 main :: IO ()
-main = do
-  (expr:_) <- getArgs
-  putStrLn (readExpr expr)
+main = getArgs >>= print . eval . readExpr . head
 
-readExpr :: String -> String
+readExpr :: String -> LispVal
 readExpr input = case parse parseExpr "lisp" input of
-  Left err  -> "No match: " ++ show err
-  Right val -> "Found " ++ show val
+  Left err  -> String ("No match: " ++ show err)
+  Right val -> val
+
+eval :: LispVal -> LispVal
+eval val@(String _) = val
+eval val@(Number _) = val
+eval val@(Bool _) = val
+eval (List [Atom "quote", val]) = val
+
 
 showVal :: LispVal -> String
 showVal (String s)       = "\"" ++ s ++ "\""
