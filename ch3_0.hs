@@ -39,10 +39,16 @@ eval val@(Rational _) = val
 eval val@(Complex _) = val
 eval val@(Bool _) = val
 eval (List [Atom "quote", val]) = val
-eval (List (Atom func:args)) = undefined -- apply func $ map eval args
+eval (List (Atom func:args)) = apply func $ map eval args
 eval val@(List _) = val
 eval val@(DottedList _ _) = val
 eval val@(Vector _) = val
+
+apply :: String -> [LispVal] -> LispVal
+apply func args = case lookup func primitives of
+  Just f -> f args
+  Nothing -> Bool False
+-- apply func args = maybe (Bool False) ($ args) $ lookup func primitives
 
 showVal :: LispVal -> String
 showVal (String s)       = "\"" ++ s ++ "\""
@@ -57,6 +63,26 @@ showVal (Bool False)     = "#f"
 showVal (List l)         = "(" ++ unwordsList l ++ ")"
 showVal (DottedList l c) = "(" ++ unwordsList l ++ " . " ++ showVal c ++ ")"
 showVal (Vector l)       = "#(" ++ unwordsList (elems l) ++ ")"
+
+primitives :: [(String, [LispVal] -> LispVal)]
+primitives = [("+", numericBinOp (+)),
+              ("-", numericBinOp (-)),
+              ("*", numericBinOp (*)),
+              ("/", numericBinOp div),
+              ("mod", numericBinOp quot),
+              ("remainder", numericBinOp rem)]
+
+numericBinOp :: (Integer -> Integer -> Integer) -> [LispVal] -> LispVal
+numericBinOp func params = Number $ foldl1 func (map unpackNum params)
+
+unpackNum :: LispVal -> Integer
+unpackNum (Number n) = n
+unpackNum (String n) = let parsed = reads n :: [(Integer, String)]
+                       in if null parsed
+                            then 0
+                            else fst $ parsed !! 0
+unpackNum (List [n]) = unpackNum n
+unpackNum _          = 0
 
 parseExpr :: Parser LispVal
 parseExpr = try parseComplex -- readExpr "3+4i"
