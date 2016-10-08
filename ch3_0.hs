@@ -32,10 +32,17 @@ readExpr input = case parse parseExpr "lisp" input of
 
 eval :: LispVal -> LispVal
 eval val@(String _) = val
+eval val@(Character _) = val
 eval val@(Number _) = val
+eval val@(Float _) = val
+eval val@(Rational _) = val
+eval val@(Complex _) = val
 eval val@(Bool _) = val
 eval (List [Atom "quote", val]) = val
-
+eval (List (Atom func:args)) = undefined -- apply func $ map eval args
+eval val@(List _) = val
+eval val@(DottedList _ _) = val
+eval val@(Vector _) = val
 
 showVal :: LispVal -> String
 showVal (String s)       = "\"" ++ s ++ "\""
@@ -59,6 +66,7 @@ parseExpr = try parseComplex -- readExpr "3+4i"
   <|> try parseChar -- readExpr "#\\A"
   <|> try parseString -- readExpr "\"hello hows it going?\"" | readExpr "\"hello how\\\"s it going?\""
   <|> try parseAtom -- readExpr "test"
+  <|> try parseBool -- readExpr "#t"
   <|> try (do -- readExpr "#(1 2 3)"
       string "#("
       x <- parseVector
@@ -104,11 +112,15 @@ parseAtom :: Parser LispVal
 parseAtom = do
   first <- letter <|> symbol
   rest  <- many (letter <|> digit <|> symbol)
-  let atom = first:rest
-  return $ case atom of
-    "#t" -> Bool True
-    "#f" -> Bool False
-    _    -> Atom atom
+  return $ Atom (first:rest)
+
+parseBool :: Parser LispVal
+parseBool = do
+  char '#'
+  b <- char 't' <|> char 'f'
+  return $ case b of
+    't' -> Bool True
+    'f' -> Bool False
 
 parseNumber :: Parser LispVal
 parseNumber = parseDecimal <|> parseExtended
