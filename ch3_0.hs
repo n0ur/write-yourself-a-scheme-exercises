@@ -40,6 +40,7 @@ eval val@(Complex _) = val
 eval val@(Bool _) = val
 eval (List [Atom "quote", val]) = val
 eval (List (Atom func:args)) = apply func $ map eval args
+eval val@(Atom _) = val
 eval val@(List _) = val
 eval val@(DottedList _ _) = val
 eval val@(Vector _) = val
@@ -70,7 +71,10 @@ primitives = [("+", numericBinOp (+)),
               ("*", numericBinOp (*)),
               ("/", numericBinOp div),
               ("mod", numericBinOp quot),
-              ("remainder", numericBinOp rem)]
+              ("remainder", numericBinOp rem),
+              ("string?", isString),
+              ("symbol?", isSymbol),
+              ("number?", isNumber)]
 
 numericBinOp :: (Integer -> Integer -> Integer) -> [LispVal] -> LispVal
 numericBinOp func params = Number $ foldl1 func (map unpackNum params)
@@ -233,3 +237,15 @@ toDouble(Number n) = fromIntegral n
 
 unwordsList :: [LispVal] -> String
 unwordsList = unwords . map showVal
+
+isString :: [LispVal] -> LispVal
+isString (String _:_) = Bool True
+isString _            = Bool False
+
+isSymbol :: [LispVal] -> LispVal
+isSymbol (Atom _:_) = Bool True
+isSymbol _          = Bool False
+
+isNumber :: [LispVal] -> LispVal
+isNumber (Number _:_) = Bool True
+isNumber _            = Bool False
